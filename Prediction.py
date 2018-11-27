@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
-# In[62]:
+# In[1]:
 
 
 # Multilayer perceptron (Keras)
@@ -14,6 +14,8 @@ import pandas as pd
 import numpy as np
 from statsmodels.robust.scale import mad
 import os
+from keras.models import Sequential
+from keras.layers import Dense
 
 
 # In[2]:
@@ -68,7 +70,7 @@ def normalizeFunction(x):
     return ((x - np.mean(x)) / (np.max(x) - np.min(x)))
 
 
-# In[19]:
+# In[7]:
 
 
 def normalize(data):
@@ -78,37 +80,56 @@ def normalize(data):
     data=data.drop(["日期"], axis=1)
     data=data.drop(["成交股數"], axis=1)
     data=data.drop(["成交金額"], axis=1)
-    #data=data.drop(["漲跌價差"], axis=1)
+    data=data.drop(["漲跌價差"], axis=1)
     data=data.drop(["成交筆數"], axis=1)
+    data=data.convert_objects(convert_numeric=True)
     datanormalize=data.apply(lambda x: (x - np.mean(x)) / (np.max(x) - np.min(x)))
     return datanormalize
 
 
-# In[20]:
+# In[8]:
+
+
+def predictAns(data):
+    for i in range(0,data.shape[0]-1):
+        data.loc[i,"結果"]=data["開盤價"][i+1]
+    data=data.drop([data.shape[0]-1])
+    return data
+
+
+# In[12]:
 
 
 mergeData()
 getdata=readData()
 changedata=changeYear(getdata)
 adddata=augFeatures(changedata)
-train=normalize(adddata)
-print(train)
+addans=predictAns(adddata)
+train_x=addans
+train_x=train_x.drop(["結果"], axis=1)
+train_x=normalize(train_x)
+train_x=train_x.as_matrix()
+train_y=addans["結果"]
+train_y=train_y.as_matrix()
 
 
-# In[34]:
+# In[15]:
 
 
-train = pd.read_csv("data.csv")
-train=train.drop(["日期"], axis=1)
-for i in range(0,train.shape[0]):
-    if train["漲跌價差"][i]=='X0.00':
-        train.loc[i,"漲跌價差"]='-10.00'
-train=train.convert_objects(convert_numeric=True)
-print(train.dtypes)
+model=Sequential()
+model.add(Dense(units=256,input_dim=train_x.shape[1],kernel_initializer='normal',activation='relu'))
+model.add(Dense(units=1,kernel_initializer='normal',activation='softmax'))
+print(model.summary())
 
 
-# In[ ]:
+# In[20]:
 
 
+model.compile(loss='sparse_categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
 
+
+# In[21]:
+
+
+train_history=model.fit(x=train_x,y=train_y,validation_split=0.2,epochs=10,batch_size=200,verbose=2)
 
