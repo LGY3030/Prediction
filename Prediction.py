@@ -83,53 +83,66 @@ def normalize(data):
     data=data.drop(["漲跌價差"], axis=1)
     data=data.drop(["成交筆數"], axis=1)
     data=data.convert_objects(convert_numeric=True)
-    datanormalize=data.apply(lambda x: (x - np.mean(x)) / (np.max(x) - np.min(x)))
-    return datanormalize
+    #datanormalize=data.apply(lambda x: (x - np.mean(x)) / (np.max(x) - np.min(x)))
+    return data
 
 
 # In[8]:
 
 
-def predictAns(data):
-    for i in range(0,data.shape[0]-1):
-        data.loc[i,"結果"]=data["開盤價"][i+1]
-    data=data.drop([data.shape[0]-1])
-    return data
+def buildTrain(train):
+    train_x,train_y=[],[]
+    for i in range(train.shape[0]-1):
+        train_x.append(np.array(train.iloc[i]))
+        train_y.append(np.array(train.iloc[i+1]["開盤價"]))
+    return np.array(train_x), np.array(train_y)
 
 
-# In[12]:
+# In[9]:
+
+
+def shuffle(X,Y):
+    np.random.seed(10)
+    randomList = np.arange(X.shape[0])
+    np.random.shuffle(randomList)
+    return X[randomList], Y[randomList]
+
+
+# In[10]:
 
 
 mergeData()
 getdata=readData()
 changedata=changeYear(getdata)
 adddata=augFeatures(changedata)
-addans=predictAns(adddata)
-train_x=addans
-train_x=train_x.drop(["結果"], axis=1)
-train_x=normalize(train_x)
-train_x=train_x.as_matrix()
-train_y=addans["結果"]
-train_y=train_y.as_matrix()
+train=normalize(adddata)
+train_x,train_y=buildTrain(train)
+train_x,train_y=shuffle(train_x,train_y)
+train_y=train_y.reshape(6190,1)
+print(train_x.shape)
+print(train_y.shape)
+#print(train_x)
+#print(train_y)
 
 
-# In[15]:
+# In[13]:
 
 
 model=Sequential()
-model.add(Dense(units=256,input_dim=train_x.shape[1],kernel_initializer='normal',activation='relu'))
-model.add(Dense(units=1,kernel_initializer='normal',activation='softmax'))
+model.add(Dense(units=40,input_dim=train_x.shape[1],kernel_initializer='uniform',activation='relu'))
+model.add(Dense(units=30,kernel_initializer='uniform',activation='relu'))
+model.add(Dense(units=1,kernel_initializer='uniform',activation='softmax'))
 print(model.summary())
 
 
-# In[20]:
+# In[16]:
 
 
-model.compile(loss='sparse_categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
+model.compile(loss='mse',optimizer='adam',metrics=['accuracy'])
 
 
-# In[21]:
+# In[19]:
 
 
-train_history=model.fit(x=train_x,y=train_y,validation_split=0.2,epochs=10,batch_size=200,verbose=2)
+train_history=model.fit(x=train_x,y=train_y,validation_split=0.1,epochs=1000,batch_size=30,verbose=2)
 
