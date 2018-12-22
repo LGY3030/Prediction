@@ -136,29 +136,32 @@ def buildTrain(train, pastDay=1, futureDay=1):
     return X, Y
 
 
-# In[113]:
+# In[125]:
 
 
 def shuffle(X,Y):
-  np.random.seed(10)
+  np.random.seed()
   randomList = np.arange(X.shape[0])
   np.random.shuffle(randomList)
   return X[randomList], Y[randomList]
 
 
-# In[114]:
+# In[126]:
 
 
 # 將Training Data取一部份當作Validation Data
 def splitData(X,Y,rate):
-  X_train = X[int(X.shape[0]*rate):]
-  Y_train = Y[int(Y.shape[0]*rate):]
-  X_val = X[:int(X.shape[0]*rate)]
-  Y_val = Y[:int(Y.shape[0]*rate)]
-  return X_train, Y_train, X_val, Y_val
+    X_train = X[:-int(X.shape[0]*rate)]
+
+    Y_train = Y[:-int(Y.shape[0]*rate)]
+    
+    X_val = X[-int(X.shape[0]*rate):]
+
+    Y_val = Y[-int(Y.shape[0]*rate):]
+    return X_train, Y_train, X_val, Y_val
 
 
-# In[119]:
+# In[127]:
 
 
 def buildOneToOneModel(shape):
@@ -166,12 +169,12 @@ def buildOneToOneModel(shape):
   model.add(LSTM(10, input_length=shape[1], input_dim=shape[2],return_sequences=True))
   # output shape: (1, 1)
   model.add(TimeDistributed(Dense(12)))    # or use model.add(Dense(1))
-  model.compile(loss="mse", optimizer="adam")
+  model.compile(loss="mean_squared_error", optimizer="adam")
   model.summary()
   return model
 
 
-# In[120]:
+# In[128]:
 
 
 
@@ -194,13 +197,13 @@ val_y = val_y[:,np.newaxis]
 model = buildOneToOneModel(train_x.shape)
 callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
 
-model.fit(train_x, train_y, epochs=1000, batch_size=50, validation_data=(val_x, val_y), callbacks=[callback])
+model.fit(train_x, train_y, epochs=1000, batch_size=150, validation_data=(val_x, val_y), callbacks=[callback])
 
 
-# In[121]:
+# In[131]:
 
 
-scores= model.evaluate(val_x, val_y,verbose=1)
+scores= model.evaluate(val_x, val_y,verbose=1,batch_size=150)
 print(scores)
 
 
