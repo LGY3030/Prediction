@@ -7,7 +7,7 @@
 # RNN(Long Short-Term Memory, LSTM)
 
 
-# In[80]:
+# In[3]:
 
 
 import pandas as pd
@@ -22,7 +22,7 @@ import os
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[81]:
+# In[4]:
 
 
 def mergeData():
@@ -35,7 +35,7 @@ def mergeData():
         df.to_csv(SaveFile_Name,encoding="utf_8_sig",index=False, header=False, mode='a+')
 
 
-# In[82]:
+# In[5]:
 
 
 def readData():
@@ -43,7 +43,7 @@ def readData():
     return train
 
 
-# In[83]:
+# In[6]:
 
 
 def changeYear(data):
@@ -55,7 +55,7 @@ def changeYear(data):
     return data
 
 
-# In[84]:
+# In[7]:
 
 
 # Augment Features
@@ -68,7 +68,7 @@ def augFeatures(data):
   return data
 
 
-# In[85]:
+# In[8]:
 
 
 def manage(data):
@@ -84,7 +84,7 @@ def manage(data):
     return data
 
 
-# In[86]:
+# In[9]:
 
 
 def normalize(data):
@@ -92,7 +92,7 @@ def normalize(data):
     return datanormalize
 
 
-# In[112]:
+# In[10]:
 
 
 def buildTrain(train, pastDay=1, futureDay=1):
@@ -136,17 +136,17 @@ def buildTrain(train, pastDay=1, futureDay=1):
     return X, Y
 
 
-# In[125]:
+# In[11]:
 
 
-def shuffle(X,Y):
+def shuffle1(X,Y):
   np.random.seed()
   randomList = np.arange(X.shape[0])
   np.random.shuffle(randomList)
   return X[randomList], Y[randomList]
 
 
-# In[126]:
+# In[12]:
 
 
 # 將Training Data取一部份當作Validation Data
@@ -161,53 +161,84 @@ def splitData(X,Y,rate):
     return X_train, Y_train, X_val, Y_val
 
 
-# In[127]:
+# In[13]:
 
 
 def buildOneToOneModel(shape):
-  model = Sequential()
-  model.add(LSTM(10, input_length=shape[1], input_dim=shape[2],return_sequences=True))
-  # output shape: (1, 1)
-  model.add(TimeDistributed(Dense(12)))    # or use model.add(Dense(1))
-  model.compile(loss="mean_squared_error", optimizer="adam")
-  model.summary()
-  return model
+    model = Sequential()
+    model.add(LSTM(10, input_length=shape[1], input_dim=shape[2],return_sequences=True))
+    model.add(LSTM(10,return_sequences=True))
+    model.add(LSTM(10))
+    #model.add(Flatten())
+    model.add(Dense(12))
+    #model.add(Activation('softmax'))
+    model.compile(loss="mean_squared_error", optimizer="adam")
+    model.summary()
+    return model
 
 
-# In[128]:
+# In[14]:
 
 
+from sklearn.utils import shuffle
 
 mergeData()
 train=readData()
 train=changeYear(train)
 train=augFeatures(train)
 train=manage(train)
+#train = shuffle(train)
+
 temp=train
 train=normalize(train)
+
 train_x1, train_y1 = buildTrain(train, 1, 1)
 train_x2, train_y2 = buildTrain(temp, 1, 1)
 train_x, train_y = train_x1,train_y2
-train_x, train_y = shuffle(train_x, train_y )
+#train_x, train_y = shuffle(train_x, train_y )
 # split training data and validation data
 train_x, train_y , val_x, val_y = splitData(train_x, train_y , 0.1)
-train_y = train_y[:,np.newaxis]
-val_y = val_y[:,np.newaxis]
+
+#train_y = train_y[:,np.newaxis]
+#val_y = val_y[:,np.newaxis]
+print(train_x.shape)
+print(train_y.shape)
+print(val_x.shape)
+print(val_y.shape)
+print(type(train_x))
+print(type(train_y))
+print(type(val_x))
+print(type(val_y))
+train_x= np.reshape(train_x, (train_x.shape[0],train_x.shape[2],1))
+val_x= np.reshape(val_x, (val_x.shape[0],val_x.shape[2],1))
+#train_y= np.reshape(train_y, (train_y.shape[0],train_y.shape[2],1))
+#val_y= np.reshape(val_y, (val_y.shape[0],val_y.shape[2],1))
+print(train_x.shape)
+print(train_y.shape)
+print(val_x.shape)
+print(val_y.shape)
+print(type(train_x))
+print(type(train_y))
+print(type(val_x))
+print(type(val_y))
 
 model = buildOneToOneModel(train_x.shape)
-callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
-
-model.fit(train_x, train_y, epochs=1000, batch_size=150, validation_data=(val_x, val_y), callbacks=[callback])
 
 
-# In[131]:
+
+callback = EarlyStopping(monitor="acc", patience=10, verbose=1, mode="auto")
+
+model.fit(train_x, train_y, epochs=1000, batch_size=150, validation_split=0.05,callbacks=[callback])
+
+
+# In[16]:
 
 
 scores= model.evaluate(val_x, val_y,verbose=1,batch_size=150)
 print(scores)
 
 
-# In[13]:
+# In[15]:
 
 
 print(train_y )
