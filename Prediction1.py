@@ -1,13 +1,13 @@
 
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 # RNN(Long Short-Term Memory, LSTM)
 
 
-# In[3]:
+# In[15]:
 
 
 import pandas as pd
@@ -17,12 +17,13 @@ from keras.layers import Dense, Dropout, Activation, Flatten, LSTM, TimeDistribu
 from keras.layers.normalization import BatchNormalization
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.utils import np_utils
 import matplotlib.pyplot as plt
 import os
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[4]:
+# In[3]:
 
 
 def mergeData():
@@ -35,7 +36,7 @@ def mergeData():
         df.to_csv(SaveFile_Name,encoding="utf_8_sig",index=False, header=False, mode='a+')
 
 
-# In[5]:
+# In[4]:
 
 
 def readData():
@@ -43,7 +44,7 @@ def readData():
     return train
 
 
-# In[6]:
+# In[5]:
 
 
 def changeYear(data):
@@ -55,7 +56,7 @@ def changeYear(data):
     return data
 
 
-# In[7]:
+# In[6]:
 
 
 # Augment Features
@@ -68,7 +69,7 @@ def augFeatures(data):
   return data
 
 
-# In[8]:
+# In[7]:
 
 
 def manage(data):
@@ -84,7 +85,7 @@ def manage(data):
     return data
 
 
-# In[9]:
+# In[8]:
 
 
 def normalize(data):
@@ -92,7 +93,7 @@ def normalize(data):
     return datanormalize
 
 
-# In[10]:
+# In[52]:
 
 
 def buildTrain(train, pastDay=1, futureDay=1):
@@ -109,34 +110,34 @@ def buildTrain(train, pastDay=1, futureDay=1):
     Y_train=[]
     for i in range(len(Y)):
         if Y[i]<-5:
-            Y_train.append(np.array([1,0,0,0,0,0,0,0,0,0,0,0]))
+            Y_train.append(np.array([0]))
         elif -5<=Y[i]<-4:
-            Y_train.append(np.array([0,1,0,0,0,0,0,0,0,0,0,0]))
+            Y_train.append(np.array([1]))
         elif -4<=Y[i]<-3:
-            Y_train.append(np.array([0,0,1,0,0,0,0,0,0,0,0,0]))
+            Y_train.append(np.array([2]))
         elif -3<=Y[i]<-2:
-            Y_train.append(np.array([0,0,0,1,0,0,0,0,0,0,0,0]))
+            Y_train.append(np.array([3]))
         elif -2<=Y[i]<-1:
-            Y_train.append(np.array([0,0,0,0,1,0,0,0,0,0,0,0]))
+            Y_train.append(np.array([4]))
         elif -1<=Y[i]<0:
-            Y_train.append(np.array([0,0,0,0,0,1,0,0,0,0,0,0]))
+            Y_train.append(np.array([5]))
         elif 0<=Y[i]<1:
-            Y_train.append(np.array([0,0,0,0,0,0,1,0,0,0,0,0]))
+            Y_train.append(np.array([6]))
         elif 1<=Y[i]<2:
-            Y_train.append(np.array([0,0,0,0,0,0,0,1,0,0,0,0]))
+            Y_train.append(np.array([7]))
         elif 2<=Y[i]<3:
-            Y_train.append(np.array([0,0,0,0,0,0,0,0,1,0,0,0]))
+            Y_train.append(np.array([8]))
         elif 3<=Y[i]<4:
-            Y_train.append(np.array([0,0,0,0,0,0,0,0,0,1,0,0]))
+            Y_train.append(np.array([9]))
         elif 4<=Y[i]<5:
-            Y_train.append(np.array([0,0,0,0,0,0,0,0,0,0,1,0]))
+            Y_train.append(np.array([10]))
         elif 5<=Y[i]:
-            Y_train.append(np.array([0,0,0,0,0,0,0,0,0,0,0,1]))
+            Y_train.append(np.array([11]))
     Y=np.array(Y_train)
     return X, Y
 
 
-# In[11]:
+# In[53]:
 
 
 def shuffle1(X,Y):
@@ -146,7 +147,7 @@ def shuffle1(X,Y):
   return X[randomList], Y[randomList]
 
 
-# In[12]:
+# In[54]:
 
 
 # 將Training Data取一部份當作Validation Data
@@ -161,23 +162,23 @@ def splitData(X,Y,rate):
     return X_train, Y_train, X_val, Y_val
 
 
-# In[13]:
+# In[79]:
 
 
 def buildOneToOneModel(shape):
     model = Sequential()
-    model.add(LSTM(10, input_length=shape[1], input_dim=shape[2],return_sequences=True))
-    model.add(LSTM(10,return_sequences=True))
-    model.add(LSTM(10))
-    #model.add(Flatten())
+    model.add(LSTM(12,input_shape=(None, 8),return_sequences=True))
+    model.add(Dropout(0.2))
+    model.add(LSTM(24,return_sequences=True))
+    model.add(Dropout(0.2))
+    model.add(LSTM(36))
     model.add(Dense(12))
-    #model.add(Activation('softmax'))
-    model.compile(loss="mean_squared_error", optimizer="adam")
+    model.compile(loss="categorical_crossentropy", optimizer="adam",metrics=['accuracy'])
     model.summary()
     return model
 
 
-# In[14]:
+# In[80]:
 
 
 from sklearn.utils import shuffle
@@ -196,42 +197,26 @@ train_x1, train_y1 = buildTrain(train, 1, 1)
 train_x2, train_y2 = buildTrain(temp, 1, 1)
 train_x, train_y = train_x1,train_y2
 #train_x, train_y = shuffle(train_x, train_y )
-# split training data and validation data
+
 train_x, train_y , val_x, val_y = splitData(train_x, train_y , 0.1)
 
-#train_y = train_y[:,np.newaxis]
-#val_y = val_y[:,np.newaxis]
-print(train_x.shape)
-print(train_y.shape)
-print(val_x.shape)
-print(val_y.shape)
-print(type(train_x))
-print(type(train_y))
-print(type(val_x))
-print(type(val_y))
-train_x= np.reshape(train_x, (train_x.shape[0],train_x.shape[2],1))
-val_x= np.reshape(val_x, (val_x.shape[0],val_x.shape[2],1))
-#train_y= np.reshape(train_y, (train_y.shape[0],train_y.shape[2],1))
-#val_y= np.reshape(val_y, (val_y.shape[0],val_y.shape[2],1))
-print(train_x.shape)
-print(train_y.shape)
-print(val_x.shape)
-print(val_y.shape)
-print(type(train_x))
-print(type(train_y))
-print(type(val_x))
-print(type(val_y))
+train_y=np_utils.to_categorical(train_y)
+val_y=np_utils.to_categorical(val_y)
+
+#train_x= np.reshape(train_x, (train_x.shape[0],train_x.shape[2]))
+#val_x= np.reshape(val_x, (val_x.shape[0],val_x.shape[2]))
+
 
 model = buildOneToOneModel(train_x.shape)
 
 
 
-callback = EarlyStopping(monitor="acc", patience=10, verbose=1, mode="auto")
+#callback = EarlyStopping(monitor="acc", patience=10, verbose=1, mode="auto")
 
-model.fit(train_x, train_y, epochs=1000, batch_size=150, validation_split=0.05,callbacks=[callback])
+model.fit(train_x, train_y, epochs=500, batch_size=200,verbose=2, validation_split=0.2)
 
 
-# In[16]:
+# In[ ]:
 
 
 scores= model.evaluate(val_x, val_y,verbose=1,batch_size=150)
