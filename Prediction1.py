@@ -7,7 +7,7 @@
 # RNN(Long Short-Term Memory, LSTM)
 
 
-# In[1]:
+# In[72]:
 
 
 import pandas as pd
@@ -19,11 +19,12 @@ from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.utils import np_utils
 import matplotlib.pyplot as plt
+from keras.optimizers import RMSprop
 import os
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[2]:
+# In[73]:
 
 
 def mergeData():
@@ -36,7 +37,7 @@ def mergeData():
         df.to_csv(SaveFile_Name,encoding="utf_8_sig",index=False, header=False, mode='a+')
 
 
-# In[3]:
+# In[74]:
 
 
 def readData():
@@ -44,7 +45,7 @@ def readData():
     return train
 
 
-# In[4]:
+# In[75]:
 
 
 def changeYear(data):
@@ -56,7 +57,7 @@ def changeYear(data):
     return data
 
 
-# In[5]:
+# In[76]:
 
 
 # Augment Features
@@ -69,7 +70,7 @@ def augFeatures(data):
   return data
 
 
-# In[6]:
+# In[77]:
 
 
 def manage(data):
@@ -85,17 +86,16 @@ def manage(data):
     return data
 
 
-# In[7]:
+# In[78]:
 
 
 from sklearn import preprocessing
-def normalize(data):
-    minmax_scale=preprocessing.MinMaxScaler(feature_range=(0,1))
-    datanormalize=minmax_scale.fit_transform(data)
-    return datanormalize
+def normalize(train):
+    train = train.apply(lambda x: (x - np.mean(x)) / (np.max(x) - np.min(x)))
+    return train
 
 
-# In[8]:
+# In[79]:
 
 
 def buildTrain(train, pastDay=30, futureDay=1):
@@ -108,38 +108,30 @@ def buildTrain(train, pastDay=30, futureDay=1):
     X=np.array(X_train)
     Y=np.array(Y_train)
     Z=np.array(Z_train)
-    Y=(Y-Z)/2
+    Y=100*((Y-Z)/Z)
     Y_train=[]
+    
     for i in range(len(Y)):
-        if Y[i]<-5:
+        if Y[i]<-1.5:
             Y_train.append(np.array([0]))
-        elif -5<=Y[i]<-4:
+        elif -1.5<=Y[i]<-0.5:
             Y_train.append(np.array([1]))
-        elif -4<=Y[i]<-3:
+        elif -0.5<=Y[i]<0.4:
             Y_train.append(np.array([2]))
-        elif -3<=Y[i]<-2:
+        elif 0.4<=Y[i]<1.4:
             Y_train.append(np.array([3]))
-        elif -2<=Y[i]<-1:
+        elif 1.4<=Y[i]<2.5:
             Y_train.append(np.array([4]))
-        elif -1<=Y[i]<0:
+        elif 2.5<=Y[i]<4.3:
             Y_train.append(np.array([5]))
-        elif 0<=Y[i]<1:
+        elif 4.3<=Y[i]:
             Y_train.append(np.array([6]))
-        elif 1<=Y[i]<2:
-            Y_train.append(np.array([7]))
-        elif 2<=Y[i]<3:
-            Y_train.append(np.array([8]))
-        elif 3<=Y[i]<4:
-            Y_train.append(np.array([9]))
-        elif 4<=Y[i]<5:
-            Y_train.append(np.array([10]))
-        elif 5<=Y[i]:
-            Y_train.append(np.array([11]))
     Y=np.array(Y_train)
+    
     return X, Y
 
 
-# In[9]:
+# In[80]:
 
 
 def shuffle1(X,Y):
@@ -149,7 +141,7 @@ def shuffle1(X,Y):
   return X[randomList], Y[randomList]
 
 
-# In[10]:
+# In[81]:
 
 
 # 將Training Data取一部份當作Validation Data
@@ -164,67 +156,35 @@ def splitData(X,Y,rate):
     return X_train, Y_train, X_val, Y_val
 
 
-# In[11]:
+# In[87]:
 
 
 def buildModel(shape):
+    '''
     model = Sequential()
-    model.add(LSTM(16,input_length=shape[1], input_dim=shape[2],return_sequences=True))
-    model.add(Dropout(0.2))
-    model.add(LSTM(16))
-    model.add(Dropout(0.2))
-    model.add(Dense(12,activation='softmax'))
+    model.add(LSTM(10,input_length=shape[1], input_dim=shape[2]))
+    model.add(Dense(1,activation='softmax'))
     model.compile(loss="categorical_crossentropy", optimizer="adam",metrics=['accuracy'])
+    model.summary()
+    return model
+    '''
+    model = Sequential()
+    model.add(LSTM(32, input_length=shape[1], input_dim=shape[2], return_sequences=True) )
+    model.add(Dropout(0.2))
+    model.add(LSTM(64))
+    model.add(Dropout(0.3))
+    model.add(Dense(50,activation='relu'))
+    model.add(Dropout(0.3))
+    model.add(Dense(50,activation='relu'))
+    model.add(Dropout(0.3))
+    model.add(Dense(7))
+    model.add(Activation('softmax'))
+    model.compile(loss="categorical_crossentropy", optimizer='adam',metrics=['accuracy'])
     model.summary()
     return model
 
 
-# In[14]:
-
-
-from sklearn.utils import shuffle
-
-mergeData()
-train=readData()
-train=changeYear(train)
-train=augFeatures(train)
-train=manage(train)
-
-temp=train
-train=np.array(train)
-train=normalize(train)
-train=pd.DataFrame(train)
-train=train.rename(columns = {0:'開盤價',1:'最高價',2:'最低價',3:'收盤價',4:'年',5:'月',6:'日',7:'第幾日'})
-train_x1, train_y1 = buildTrain(train,30,1)
-train_x2, train_y2 = buildTrain(temp,30,1)
-#train_x1= np.reshape(train_x1, (train_x1.shape[0],train_x1.shape[2]))
-#train_x1=normalize(train_x1)
-#train_x1= np.reshape(train_x1, (train_x1.shape[0],1,train_x1.shape[1]))
-train_x, train_y = train_x1,train_y2
-
-train_x, train_y = shuffle1(train_x, train_y )
-
-train_x, train_y , val_x, val_y = splitData(train_x, train_y , 0.1)
-
-train_y=np_utils.to_categorical(train_y)
-val_y=np_utils.to_categorical(val_y)
-
-#train_x= np.reshape(train_x, (train_x.shape[0],train_x.shape[2]))
-#val_x= np.reshape(val_x, (val_x.shape[0],val_x.shape[2]))
-
-history = LossHistory()
-model = buildOneToOneModel(train_x.shape)
-
-
-
-#callback = EarlyStopping(monitor="acc", patience=10, verbose=1, mode="auto")
-
-model.fit(train_x, train_y, epochs=20, batch_size=100,verbose=2, validation_split=0.1,callbacks=[history])
-
-history.loss_plot('epoch')
-
-
-# In[12]:
+# In[83]:
 
 
 import matplotlib.pyplot as plt
@@ -265,4 +225,61 @@ class LossHistory(keras.callbacks.Callback):
         plt.ylabel('acc-loss')
         plt.legend(loc="upper right")
         plt.show()
+
+
+# In[88]:
+
+
+from sklearn.utils import shuffle
+
+mergeData()
+train=readData()
+train=changeYear(train)
+train=augFeatures(train)
+train=manage(train)
+
+
+temp=train
+
+#train=np.array(train)
+train=normalize(train)
+#train=pd.DataFrame(train)
+#train=train.rename(columns = {0:'開盤價',1:'最高價',2:'最低價',3:'收盤價',4:'年',5:'月',6:'日',7:'第幾日'})
+
+train_x1, train_y1 = buildTrain(train,30,1)
+train_x2, train_y2 = buildTrain(temp,30,1)
+#train_x1= np.reshape(train_x1, (train_x1.shape[0],train_x1.shape[2]))
+#train_x1=normalize(train_x1)
+#train_x1= np.reshape(train_x1, (train_x1.shape[0],1,train_x1.shape[1]))
+
+train_x, train_y = train_x1,train_y2 
+train_y=np_utils.to_categorical(train_y)
+
+
+train_x, train_y = shuffle1(train_x, train_y )
+print(train_x)
+print(train_y)
+
+train_x, train_y , val_x, val_y = splitData(train_x, train_y , 0.1)
+
+
+#train_x= np.reshape(train_x, (train_x.shape[0],train_x.shape[2]))
+#val_x= np.reshape(val_x, (val_x.shape[0],val_x.shape[2]))
+
+history = LossHistory()
+model = buildModel(train_x.shape)
+
+
+
+
+#callback = EarlyStopping(monitor="acc", patience=10, verbose=1, mode="auto")
+
+callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
+model.fit(train_x, train_y, epochs=200, batch_size=128, verbose=2,validation_data=(val_x, val_y), callbacks=[history])
+
+
+# In[89]:
+
+
+history.loss_plot('epoch')
 
