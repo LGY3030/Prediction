@@ -1,13 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
-
-
-# RNN(Long Short-Term Memory, LSTM)
-
-
-# In[1]:
+# In[13]:
 
 
 import pandas as pd
@@ -24,7 +18,7 @@ import os
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[2]:
+# In[14]:
 
 
 def mergeData():
@@ -37,7 +31,7 @@ def mergeData():
         df.to_csv(SaveFile_Name,encoding="utf_8_sig",index=False, header=False, mode='a+')
 
 
-# In[3]:
+# In[15]:
 
 
 def readData():
@@ -45,7 +39,7 @@ def readData():
     return train
 
 
-# In[4]:
+# In[16]:
 
 
 def changeYear(data):
@@ -57,7 +51,7 @@ def changeYear(data):
     return data
 
 
-# In[5]:
+# In[17]:
 
 
 # Augment Features
@@ -70,7 +64,7 @@ def augFeatures(data):
   return data
 
 
-# In[83]:
+# In[18]:
 
 
 def manage(data):
@@ -86,7 +80,7 @@ def manage(data):
     return data
 
 
-# In[7]:
+# In[19]:
 
 
 from sklearn import preprocessing
@@ -95,7 +89,7 @@ def normalize(train):
     return train
 
 
-# In[65]:
+# In[20]:
 
 
 def buildTrain(train, pastDay=30, futureDay=1):
@@ -135,7 +129,7 @@ def buildTrain(train, pastDay=30, futureDay=1):
     return X, Y
 
 
-# In[9]:
+# In[21]:
 
 
 def shuffle1(X,Y):
@@ -145,7 +139,7 @@ def shuffle1(X,Y):
   return X[randomList], Y[randomList]
 
 
-# In[10]:
+# In[22]:
 
 
 # 將Training Data取一部份當作Validation Data
@@ -160,47 +154,22 @@ def splitData(X,Y,rate):
     return X_train, Y_train, X_val, Y_val
 
 
-# In[101]:
+# In[44]:
 
 
 def buildModel(shape):
-    '''
+
     model = Sequential()
-    model.add(LSTM(10,input_length=shape[1], input_dim=shape[2]))
-    model.add(Dense(1,activation='softmax'))
-    model.compile(loss="categorical_crossentropy", optimizer="adam",metrics=['accuracy'])
-    model.summary()
-    return model
-    '''
-    '''
-    
-    model = Sequential()
-    model.add(LSTM(100, input_shape=(shape[1],shape[2]), return_sequences=True))
-    model.add(Dropout(0.3))
-    model.add(LSTM(50, input_shape=(shape[1],shape[2]), return_sequences=False))
-    model.add(Dropout(0.3))
-    model.add(Dense(128,init='uniform',activation='relu'))
-    model.add(Dropout(0.3))
-    model.add(Dense(9,init='uniform',activation='softmax'))
-    model.compile(loss="categorical_crossentropy", optimizer=opt,metrics=['accuracy'])
-    model.summary()
-    return model
-    '''
-    
-    model = Sequential([
-    Dense(250, input_dim=shape[1]),
-    Activation('relu'),
-    Dense(250),
-    Activation('relu'),
-    Dense(9),
-    Activation('softmax'),
-    ])
+    model.add(LSTM(200, input_length=shape[1], input_dim=shape[2],return_sequences=True))
+    model.add(LSTM(200))
+    model.add(Dense(9)) 
+    model.add(Activation('softmax'))
     model.compile(loss="categorical_crossentropy", optimizer='adam',metrics=['accuracy'])
     model.summary()
     return model
 
 
-# In[21]:
+# In[45]:
 
 
 import matplotlib.pyplot as plt
@@ -243,7 +212,7 @@ class LossHistory(keras.callbacks.Callback):
         plt.show()
 
 
-# In[106]:
+# In[46]:
 
 
 from sklearn.utils import shuffle
@@ -253,54 +222,26 @@ train=readData()
 train=changeYear(train)
 train=augFeatures(train)
 train=manage(train)
-
-
 temp=train
-
-#train=np.array(train)
 train=normalize(train)
-#train=pd.DataFrame(train)
-#train=train.rename(columns = {0:'開盤價',1:'最高價',2:'最低價',3:'收盤價',4:'年',5:'月',6:'日',7:'第幾日'})
-
 train_x1, train_y1 = buildTrain(train,1,1)
 train_x2, train_y2 = buildTrain(temp,1,1)
-train_x1= np.reshape(train_x1, (train_x1.shape[0],train_x1.shape[2]))
-#train_x1=normalize(train_x1)
-#train_x1= np.reshape(train_x1, (train_x1.shape[0],1,train_x1.shape[1]))
-
 train_x, train_y = train_x1,train_y2 
 train_y=np_utils.to_categorical(train_y)
-
-
 train_x, train_y = shuffle1(train_x, train_y )
-#print(train_x)
-#print(train_y)
-
 train_x, train_y , test_x, test_y = splitData(train_x, train_y , 0.1)
-
-
-#train_x= np.reshape(train_x, (train_x.shape[0],train_x.shape[2]))
-#val_x= np.reshape(val_x, (val_x.shape[0],val_x.shape[2]))
-
 history = LossHistory()
 model = buildModel(train_x.shape)
-
-
-
-
-#callback = EarlyStopping(monitor="acc", patience=10, verbose=1, mode="auto")
-
-#callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
 model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[history])
 
 
-# In[107]:
+# In[47]:
 
 
 history.loss_plot('epoch')
 
 
-# In[108]:
+# In[48]:
 
 
 loss, accuracy = model.evaluate(test_x, test_y)
