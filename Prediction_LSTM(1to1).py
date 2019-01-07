@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[13]:
+# In[1]:
 
 
 import pandas as pd
@@ -13,14 +13,15 @@ from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.utils import np_utils
 import matplotlib.pyplot as plt
-from keras.optimizers import RMSprop
 import os
-get_ipython().run_line_magic('matplotlib', 'inline')
+from sklearn import preprocessing
+from sklearn.utils import shuffle
 
 
-# In[14]:
+# In[2]:
 
 
+# 把所有年份的資料merge在一起,並存在data.csv裡
 def mergeData():
     SaveFile_Name = 'data.csv'
     file_list = os.listdir('data')
@@ -31,17 +32,19 @@ def mergeData():
         df.to_csv(SaveFile_Name,encoding="utf_8_sig",index=False, header=False, mode='a+')
 
 
-# In[15]:
+# In[3]:
 
 
+# 讀取data.csv
 def readData():
     train = pd.read_csv("data.csv")
     return train
 
 
-# In[16]:
+# In[4]:
 
 
+# 把年份換成西元年
 def changeYear(data):
     for i in range(0,data.shape[0]):
         Date=data["日期"][i].split('/')
@@ -51,10 +54,10 @@ def changeYear(data):
     return data
 
 
-# In[17]:
+# In[5]:
 
 
-# Augment Features
+# 增加features("年","月","日","第幾日")
 def augFeatures(data):
   data["日期"] = pd.to_datetime(data["日期"])
   data["年"] = data["日期"].dt.year
@@ -64,9 +67,10 @@ def augFeatures(data):
   return data
 
 
-# In[18]:
+# In[6]:
 
 
+# 把非數字的資料換成正確資料,並減少features("日期","成交股數","成交金額",等等...)
 def manage(data):
     for i in range(0,data.shape[0]):
         if data["漲跌價差"][i]=='X0.00':
@@ -80,18 +84,19 @@ def manage(data):
     return data
 
 
-# In[19]:
+# In[7]:
 
 
-from sklearn import preprocessing
+# 把資料normalize
 def normalize(train):
     train = train.apply(lambda x: (x - np.mean(x)) / (np.max(x) - np.min(x)))
     return train
 
 
-# In[20]:
+# In[8]:
 
 
+# 創造出train的資料,train_x為輸入資料(所有features),train_y為輸出資料(開盤價的成長率,分為9個區段)
 def buildTrain(train, pastDay=30, futureDay=1):
     X_train, Y_train, Z_train= [], [], []
     X,Y,Z=[],[],[]
@@ -129,20 +134,21 @@ def buildTrain(train, pastDay=30, futureDay=1):
     return X, Y
 
 
-# In[21]:
+# In[9]:
 
 
-def shuffle1(X,Y):
-  np.random.seed()
-  randomList = np.arange(X.shape[0])
-  np.random.shuffle(randomList)
-  return X[randomList], Y[randomList]
+# 把資料打亂
+def shuffle(X,Y):
+    np.random.seed()
+    randomList = np.arange(X.shape[0])
+    np.random.shuffle(randomList)
+    return X[randomList], Y[randomList]
 
 
-# In[22]:
+# In[10]:
 
 
-# 將Training Data取一部份當作Validation Data
+# 將資料分成訓練資料和測試資料
 def splitData(X,Y,rate):
     X_train = X[:-int(X.shape[0]*rate)]
 
@@ -154,14 +160,16 @@ def splitData(X,Y,rate):
     return X_train, Y_train, X_val, Y_val
 
 
-# In[44]:
+# In[61]:
 
 
+# 建立模型
 def buildModel(shape):
-
     model = Sequential()
     model.add(LSTM(200, input_length=shape[1], input_dim=shape[2],return_sequences=True))
+    model.add(Dropout(0.2))
     model.add(LSTM(200))
+    model.add(Dropout(0.2))
     model.add(Dense(9)) 
     model.add(Activation('softmax'))
     model.compile(loss="categorical_crossentropy", optimizer='adam',metrics=['accuracy'])
@@ -169,7 +177,7 @@ def buildModel(shape):
     return model
 
 
-# In[45]:
+# In[43]:
 
 
 import matplotlib.pyplot as plt
@@ -212,10 +220,112 @@ class LossHistory(keras.callbacks.Callback):
         plt.show()
 
 
-# In[46]:
+# In[64]:
 
 
-from sklearn.utils import shuffle
+mergeData()
+train=readData()
+train=changeYear(train)
+train=augFeatures(train)
+train=manage(train)
+train=train.drop(["最高價"], axis=1)
+train=train.drop(["最低價"], axis=1)
+train=train.drop(["收盤價"], axis=1)
+train=train.drop(["年"], axis=1)
+train=train.drop(["月"], axis=1)
+train=train.drop(["日"], axis=1)
+train=train.drop(["第幾日"], axis=1)
+temp=train
+train=normalize(train)
+train_x1, train_y1 = buildTrain(train,1,1)
+train_x2, train_y2 = buildTrain(temp,1,1)
+train_x, train_y = train_x1,train_y2 
+train_y=np_utils.to_categorical(train_y)
+train_x, train_y = shuffle(train_x, train_y )
+train_x, train_y , test_x, test_y = splitData(train_x, train_y , 0.1)
+history = LossHistory()
+model = buildModel(train_x.shape)
+callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
+model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
+
+
+# In[65]:
+
+
+history.loss_plot('epoch')
+loss_1, accuracy_1 = model.evaluate(test_x, test_y)
+print('test loss: ', loss_1)
+print('test accuracy: ', accuracy_1)
+
+
+# In[66]:
+
+
+mergeData()
+train=readData()
+train=changeYear(train)
+train=augFeatures(train)
+train=manage(train)
+train=train.drop(["最高價"], axis=1)
+train=train.drop(["最低價"], axis=1)
+train=train.drop(["收盤價"], axis=1)
+temp=train
+train=normalize(train)
+train_x1, train_y1 = buildTrain(train,1,1)
+train_x2, train_y2 = buildTrain(temp,1,1)
+train_x, train_y = train_x1,train_y2 
+train_y=np_utils.to_categorical(train_y)
+train_x, train_y = shuffle(train_x, train_y )
+train_x, train_y , test_x, test_y = splitData(train_x, train_y , 0.1)
+history = LossHistory()
+model = buildModel(train_x.shape)
+callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
+model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
+
+
+# In[67]:
+
+
+history.loss_plot('epoch')
+loss_2, accuracy_2 = model.evaluate(test_x, test_y)
+print('test loss: ', loss_2)
+print('test accuracy: ', accuracy_2)
+
+
+# In[68]:
+
+
+mergeData()
+train=readData()
+train=changeYear(train)
+train=augFeatures(train)
+train=manage(train)
+train=train.drop(["收盤價"], axis=1)
+temp=train
+train=normalize(train)
+train_x1, train_y1 = buildTrain(train,1,1)
+train_x2, train_y2 = buildTrain(temp,1,1)
+train_x, train_y = train_x1,train_y2 
+train_y=np_utils.to_categorical(train_y)
+train_x, train_y = shuffle(train_x, train_y )
+train_x, train_y , test_x, test_y = splitData(train_x, train_y , 0.1)
+history = LossHistory()
+model = buildModel(train_x.shape)
+callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
+model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
+
+
+# In[69]:
+
+
+history.loss_plot('epoch')
+loss_3, accuracy_3 = model.evaluate(test_x, test_y)
+print('test loss: ', loss_3)
+print('test accuracy: ', accuracy_3)
+
+
+# In[62]:
+
 
 mergeData()
 train=readData()
@@ -228,24 +338,30 @@ train_x1, train_y1 = buildTrain(train,1,1)
 train_x2, train_y2 = buildTrain(temp,1,1)
 train_x, train_y = train_x1,train_y2 
 train_y=np_utils.to_categorical(train_y)
-train_x, train_y = shuffle1(train_x, train_y )
+train_x, train_y = shuffle(train_x, train_y )
 train_x, train_y , test_x, test_y = splitData(train_x, train_y , 0.1)
 history = LossHistory()
 model = buildModel(train_x.shape)
-model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[history])
+callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
+model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
 
 
-# In[47]:
+# In[63]:
 
 
 history.loss_plot('epoch')
+loss_4, accuracy_4 = model.evaluate(test_x, test_y)
+print('test loss: ', loss_4)
+print('test accuracy: ', accuracy_4)
 
 
-# In[48]:
+# In[70]:
 
 
-loss, accuracy = model.evaluate(test_x, test_y)
-
-print('test loss: ', loss)
-print('test accuracy: ', accuracy)
+accuracy=[accuracy_1*100,accuracy_2*100,accuracy_3*100,accuracy_4*100]
+number=[1,2,3,4]
+plt.plot(number, accuracy)
+plt.xlabel("accuracy")
+plt.ylabel("percent")
+plt.show()
 
