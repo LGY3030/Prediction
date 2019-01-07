@@ -97,7 +97,7 @@ def normalize(train):
 
 
 # 創造出train的資料,train_x為輸入資料(所有features),train_y為輸出資料(開盤價的成長率,分為9個區段)
-def buildTrain(train, pastDay=30, futureDay=1):
+def buildTrain(train, pastDay=1, futureDay=1):
     X_train, Y_train, Z_train= [], [], []
     X,Y,Z=[],[],[]
     for i in range(train.shape[0]-futureDay-pastDay):
