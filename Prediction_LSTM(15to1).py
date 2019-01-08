@@ -97,7 +97,7 @@ def normalize(train):
 
 
 # 創造出train的資料,train_x為輸入資料(所有features),train_y為輸出資料(開盤價的成長率,分為9個區段)
-def buildTrain(train, pastDay=5, futureDay=1):
+def buildTrain(train, pastDay=3, futureDay=1):
     X_train, Y_train, Z_train= [], [], []
     X,Y,Z=[],[],[]
     for i in range(train.shape[0]-futureDay-pastDay):
@@ -166,10 +166,12 @@ def splitData(X,Y,rate):
 # 建立模型
 def buildModel(shape):
     model = Sequential()
-    model.add(LSTM(128, input_length=shape[1], input_dim=shape[2],return_sequences=True))
-    model.add(Dropout(0.2))
-    model.add(LSTM(128))
-    model.add(Dropout(0.2))
+    model.add(LSTM(250, input_shape=(shape[1],shape[2]),return_sequences=True))
+    model.add(Dropout(0.5))
+    model.add(LSTM(150,return_sequences=True))
+    model.add(Dropout(0.5))
+    model.add(LSTM(100))
+    model.add(Dropout(0.5))
     model.add(Dense(9)) 
     model.add(Activation('softmax'))
     model.compile(loss="categorical_crossentropy", optimizer='adam',metrics=['accuracy'])
@@ -220,7 +222,7 @@ class LossHistory(keras.callbacks.Callback):
         plt.show()
 
 
-# In[13]:
+# In[64]:
 
 
 mergeData()
@@ -237,8 +239,8 @@ train=train.drop(["日"], axis=1)
 train=train.drop(["第幾日"], axis=1)
 temp=train
 train=normalize(train)
-train_x1, train_y1 = buildTrain(train,5,1)
-train_x2, train_y2 = buildTrain(temp,5,1)
+train_x1, train_y1 = buildTrain(train,3,1)
+train_x2, train_y2 = buildTrain(temp,3,1)
 train_x, train_y = train_x1,train_y2 
 train_y=np_utils.to_categorical(train_y)
 train_x, train_y = shuffle(train_x, train_y )
@@ -249,7 +251,7 @@ callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
 model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
 
 
-# In[14]:
+# In[65]:
 
 
 history.loss_plot('epoch')
@@ -258,7 +260,7 @@ print('test loss: ', loss_1)
 print('test accuracy: ', accuracy_1)
 
 
-# In[ ]:
+# In[66]:
 
 
 mergeData()
@@ -271,8 +273,8 @@ train=train.drop(["最低價"], axis=1)
 train=train.drop(["收盤價"], axis=1)
 temp=train
 train=normalize(train)
-train_x1, train_y1 = buildTrain(train,5,1)
-train_x2, train_y2 = buildTrain(temp,5,1)
+train_x1, train_y1 = buildTrain(train,3,1)
+train_x2, train_y2 = buildTrain(temp,3,1)
 train_x, train_y = train_x1,train_y2 
 train_y=np_utils.to_categorical(train_y)
 train_x, train_y = shuffle(train_x, train_y )
@@ -283,7 +285,7 @@ callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
 model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
 
 
-# In[ ]:
+# In[67]:
 
 
 history.loss_plot('epoch')
@@ -292,7 +294,7 @@ print('test loss: ', loss_2)
 print('test accuracy: ', accuracy_2)
 
 
-# In[ ]:
+# In[68]:
 
 
 mergeData()
@@ -303,8 +305,8 @@ train=manage(train)
 train=train.drop(["收盤價"], axis=1)
 temp=train
 train=normalize(train)
-train_x1, train_y1 = buildTrain(train,5,1)
-train_x2, train_y2 = buildTrain(temp,5,1)
+train_x1, train_y1 = buildTrain(train,3,1)
+train_x2, train_y2 = buildTrain(temp,3,1)
 train_x, train_y = train_x1,train_y2 
 train_y=np_utils.to_categorical(train_y)
 train_x, train_y = shuffle(train_x, train_y )
@@ -315,7 +317,7 @@ callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
 model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
 
 
-# In[ ]:
+# In[69]:
 
 
 history.loss_plot('epoch')
@@ -334,8 +336,8 @@ train=augFeatures(train)
 train=manage(train)
 temp=train
 train=normalize(train)
-train_x1, train_y1 = buildTrain(train,5,1)
-train_x2, train_y2 = buildTrain(temp,5,1)
+train_x1, train_y1 = buildTrain(train,3,1)
+train_x2, train_y2 = buildTrain(temp,3,1)
 train_x, train_y = train_x1,train_y2 
 train_y=np_utils.to_categorical(train_y)
 train_x, train_y = shuffle(train_x, train_y )
@@ -343,7 +345,7 @@ train_x, train_y , test_x, test_y = splitData(train_x, train_y , 0.1)
 history = LossHistory()
 model = buildModel(train_x.shape)
 callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
-model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
+model.fit(train_x, train_y, epochs=300, batch_size=16, verbose=2,validation_split=0.1, callbacks=[callback,history])
 
 
 # In[ ]:
@@ -355,7 +357,7 @@ print('test loss: ', loss_4)
 print('test accuracy: ', accuracy_4)
 
 
-# In[ ]:
+# In[70]:
 
 
 accuracy=[accuracy_1*100,accuracy_2*100,accuracy_3*100,accuracy_4*100]
