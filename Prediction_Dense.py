@@ -12,6 +12,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.utils import np_utils
+import keras
 import matplotlib.pyplot as plt
 import os
 from sklearn import preprocessing
@@ -182,9 +183,8 @@ def buildModel(shape):
 # In[12]:
 
 
-import matplotlib.pyplot as plt
-import keras
-class LossHistory(keras.callbacks.Callback):
+# 印出loss, accuracy,val_loss, val_accuracy
+class History(keras.callbacks.Callback):
     def on_train_begin(self, logs={}):
         self.losses = {'batch':[], 'epoch':[]}
         self.accuracy = {'batch':[], 'epoch':[]}
@@ -246,7 +246,7 @@ train_x, train_y = train_x1,train_y2
 train_y=np_utils.to_categorical(train_y)
 train_x, train_y = shuffle(train_x, train_y )
 train_x, train_y , test_x, test_y = splitData(train_x, train_y , 0.1)
-history = LossHistory()
+history = History()
 model = buildModel(train_x.shape)
 callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
 model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
@@ -281,7 +281,7 @@ train_x, train_y = train_x1,train_y2
 train_y=np_utils.to_categorical(train_y)
 train_x, train_y = shuffle(train_x, train_y )
 train_x, train_y , test_x, test_y = splitData(train_x, train_y , 0.1)
-history = LossHistory()
+history = History()
 model = buildModel(train_x.shape)
 callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
 model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
@@ -314,7 +314,7 @@ train_x, train_y = train_x1,train_y2
 train_y=np_utils.to_categorical(train_y)
 train_x, train_y = shuffle(train_x, train_y )
 train_x, train_y , test_x, test_y = splitData(train_x, train_y , 0.1)
-history = LossHistory()
+history = History()
 model = buildModel(train_x.shape)
 callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
 model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
@@ -347,7 +347,7 @@ train_y=np_utils.to_categorical(train_y)
 train_x, train_y = shuffle(train_x, train_y )
 train_x, train_y , test_x, test_y = splitData(train_x, train_y , 0.1)
 print(train)
-history = LossHistory()
+history = History()
 model = buildModel(train_x.shape)
 callback = EarlyStopping(monitor="loss", patience=10, verbose=1, mode="auto")
 model.fit(train_x, train_y, epochs=300, batch_size=128, verbose=2,validation_split=0.1, callbacks=[callback,history])
